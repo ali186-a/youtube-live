@@ -1,0 +1,42 @@
+name: YouTube Vertical Live - Loop
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg wget
+
+      - name: Download Google Drive Video
+        run: |
+          wget --no-check-certificate \
+            "https://drive.usercontent.google.com/download?id=12cZJHy-e6H1UUDn1Hwj2vZaNCJ0HI6L4&export=download&confirm=t" \
+            -O video.mp4
+
+      - name: Start YouTube Vertical Live - Infinite Loop
+        env:
+          STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
+        run: |
+          ffmpeg -re \
+            -stream_loop -1 \
+            -i video.mp4 \
+            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" \
+            -c:v libx264 \
+            -preset veryfast \
+            -b:v 6800k \
+            -maxrate 6800k \
+            -bufsize 13600k \
+            -g 60 \
+            -keyint_min 60 \
+            -sc_threshold 0 \
+            -c:a aac \
+            -b:a 128k \
+            -ar 44100 \
+            -f flv \
+            "rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY"
