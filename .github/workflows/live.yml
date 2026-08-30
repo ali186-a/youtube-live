@@ -8,35 +8,85 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      # ==============================
+      # 1. Download Repository Files
+      # ==============================
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ==============================
+      # 2. Install FFmpeg and Wget
+      # ==============================
       - name: Install FFmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg wget
 
+      # ==============================
+      # 3. Download Video from Google Drive
+      # ==============================
       - name: Download Google Drive Video
         run: |
           wget --no-check-certificate \
-            "https://drive.usercontent.google.com/download?id=1mtydHy_2ixTL3cEOXK92dFOnVmHQSuDS&export=download&confirm=t" \
+            "https://drive.usercontent.google.com/download?id=1LZICk4PJTgM6pw5xoEDq1A7wwAPRU1y8&export=download&confirm=t" \
             -O video.mp4
 
-      - name: Start YouTube Vertical Live - Infinite Loop
+      # ==============================
+      # 4. Check Files
+      # ==============================
+      - name: Check Files
+        run: |
+          echo "Checking video..."
+          ls -lh video.mp4
+
+          echo "Checking Subscribe image..."
+          ls -lh subscribe.png
+
+      # ==============================
+      # 5. Start YouTube Vertical Live
+      # ==============================
+      - name: Start YouTube Vertical Live
         env:
           STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
+
         run: |
-          ffmpeg -re \
+          ffmpeg \
+            -re \
             -stream_loop -1 \
             -i video.mp4 \
-            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" \
+            -loop 1 \
+            -i subscribe.png \
+            -filter_complex "
+              [0:v]
+              scale=1080:1920:force_original_aspect_ratio=decrease,
+              pad=1080:1920:(ow-iw)/2:(oh-ih)/2
+              [video];
+
+              [1:v]
+              scale=650:-1
+              [subscribe];
+
+              [video][subscribe]
+              overlay=(W-w)/2:80
+              [outv]
+            " \
+            -map "[outv]" \
+            -map 0:a? \
             -c:v libx264 \
             -preset veryfast \
+            -profile:v high \
+            -pix_fmt yuv420p \
             -b:v 6800k \
             -maxrate 6800k \
             -bufsize 13600k \
+            -r 30 \
             -g 60 \
             -keyint_min 60 \
             -sc_threshold 0 \
             -c:a aac \
             -b:a 128k \
             -ar 44100 \
+            -ac 2 \
             -f flv \
             "rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY"
