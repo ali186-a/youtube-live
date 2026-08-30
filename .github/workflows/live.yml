@@ -16,7 +16,7 @@ jobs:
       - name: Download Google Drive Video
         run: |
           wget --no-check-certificate \
-            "https://drive.usercontent.google.com/download?id=1AmxYKgSraCJuWopWSWXT1SFsjNUXKOa0&export=download&confirm=t" \
+            "https://drive.usercontent.google.com/download?id=1mtydHy_2ixTL3cEOXK92dFOnVmHQSuDS&export=download&confirm=t" \
             -O video.mp4
 
       - name: Start YouTube Vertical Live - Infinite Loop
