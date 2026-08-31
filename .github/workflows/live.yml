@@ -29,7 +29,7 @@ jobs:
       - name: Download Google Drive Video
         run: |
           wget --no-check-certificate \
-            "https://drive.usercontent.google.com/download?id=1LZICk4PJTgM6pw5xoEDq1A7wwAPRU1y8&export=download&confirm=t" \
+            "https://drive.usercontent.google.com/download?id=1bQWaDp7i7csZu1ooLfu7C3QHZwQkTA9x&export=download&confirm=t" \
             -O video.mp4
 
       # ==============================
@@ -39,10 +39,6 @@ jobs:
         run: |
           echo "Checking video..."
           ls -lh video.mp4
-
-          echo "Checking Subscribe image..."
-          ls -lh subscribe.png
-
       # ==============================
       # 5. Start YouTube Vertical Live
       # ==============================
