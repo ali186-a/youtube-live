@@ -6,54 +6,36 @@ on:
 jobs:
   stream:
     runs-on: ubuntu-latest
-
     steps:
-
-      # ==============================
-      # 1. Download Repository Files
-      # ==============================
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # ==============================
-      # 2. Install FFmpeg and Wget
-      # ==============================
       - name: Install FFmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg wget
 
-      # ==============================
-      # 3. Download Video from Google Drive
-      # ==============================
       - name: Download Google Drive Video
         run: |
           wget --no-check-certificate \
-            "https://drive.usercontent.google.com/download?id=1bQWaDp7i7csZu1ooLfu7C3QHZwQkTA9x&export=download&confirm=t" \
-            -O video1.mp4
+          "https://drive.usercontent.google.com/download?id=1bQWaDp7i7csZu1ooLfu7C3QHZwQkTA9x&export=download&confirm=t" \
+          -O video.mp4
 
-      # ==============================
-      # 4. Check Files
-      # ==============================
       - name: Check Files
         run: |
           echo "Checking video..."
-          ls -lh video1.mp4
-      # ==============================
-      # 5. Start YouTube Vertical Live
-      # ==============================
+          ls -lh video.mp4
+
       - name: Start YouTube Vertical Live
         env:
           STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
-
         run: |
           ffmpeg \
             -re \
             -stream_loop -1 \
-            -i video1.mp4 \
-            -loop 1 \
-  
-            -map "[outv]" \
+            -i video.mp4 \
+            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" \
+            -map 0:v \
             -map 0:a? \
             -c:v libx264 \
             -preset veryfast \
