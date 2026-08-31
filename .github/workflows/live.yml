@@ -38,7 +38,7 @@ jobs:
       - name: Check Files
         run: |
           echo "Checking video..."
-          ls -lh video.mp4
+          ls -lh video1.mp4
       # ==============================
       # 5. Start YouTube Vertical Live
       # ==============================
@@ -50,7 +50,7 @@ jobs:
           ffmpeg \
             -re \
             -stream_loop -1 \
-            -i video.mp4 \
+            -i video1.mp4 \
             -loop 1 \
             -i subscribe.png \
             -filter_complex "
