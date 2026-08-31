@@ -30,7 +30,7 @@ jobs:
         run: |
           wget --no-check-certificate \
             "https://drive.usercontent.google.com/download?id=1bQWaDp7i7csZu1ooLfu7C3QHZwQkTA9x&export=download&confirm=t" \
-            -O video.mp4
+            -O video1.mp4
 
       # ==============================
       # 4. Check Files
@@ -52,21 +52,7 @@ jobs:
             -stream_loop -1 \
             -i video1.mp4 \
             -loop 1 \
-            -i subscribe.png \
-            -filter_complex "
-              [0:v]
-              scale=1080:1920:force_original_aspect_ratio=decrease,
-              pad=1080:1920:(ow-iw)/2:(oh-ih)/2
-              [video];
-
-              [1:v]
-              scale=650:-1
-              [subscribe];
-
-              [video][subscribe]
-              overlay=(W-w)/2:80
-              [outv]
-            " \
+  
             -map "[outv]" \
             -map 0:a? \
             -c:v libx264 \
