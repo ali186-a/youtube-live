@@ -9,16 +9,29 @@ jobs:
     timeout-minutes: 350
 
     steps:
-      - name: Install FFmpeg and yt-dlp
+      - name: Install FFmpeg, Deno and yt-dlp
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg curl
+          
+          curl -fsSL https://deno.land/install.sh | sh
+          echo "$HOME/.deno/bin" >> $GITHUB_PATH
+          
           python3 -m pip install -U yt-dlp
 
-      - name: Start YouTube Stream
+      - name: Test YouTube
+        run: |
+          yt-dlp --version
+          yt-dlp \
+            --no-playlist \
+            -f "best[ext=mp4]/best" \
+            -g \
+            "https://www.youtube.com/watch?v=gYSm9gakuxc"
+
+      - name: Start YouTube Live
         run: |
           SOURCE_URL="https://www.youtube.com/watch?v=gYSm9gakuxc"
-          STREAM_KEY="ybqv-9jvj-2ky3-ymzx-48mm"
+          STREAM_KEY="YOUR_NEW_STREAM_KEY"
 
           yt-dlp \
             --no-playlist \
