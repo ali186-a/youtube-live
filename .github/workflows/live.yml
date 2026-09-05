@@ -1,4 +1,4 @@
-name: YouTube Vertical Live - Loop
+name: YouTube Link to YouTube Live
 
 on:
   workflow_dispatch:
@@ -6,51 +6,37 @@ on:
 jobs:
   stream:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    timeout-minutes: 350
 
-      - name: Install FFmpeg
+    steps:
+      - name: Install FFmpeg and yt-dlp
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg wget
+          sudo apt-get install -y ffmpeg
+          python3 -m pip install -U yt-dlp
 
-      - name: Download Google Drive Video
+      - name: Start YouTube Stream
         run: |
-          wget --no-check-certificate \
-          "https://drive.usercontent.google.com/download?id=1AmxYKgSraCJuWopWSWXT1SFsjNUXKOa0&export=download&confirm=t" \
-          -O video.mp4
+          SOURCE_URL="https://www.youtube.com/watch?v=gYSm9gakuxc"
+          STREAM_KEY="ybqv-9jvj-2ky3-ymzx-48mm"
 
-      - name: Check Files
-        run: |
-          echo "Checking video..."
-          ls -lh video.mp4
-
-      - name: Start YouTube Vertical Live
-        env:
-          STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
-        run: |
+          yt-dlp \
+            --no-playlist \
+            -f "best[ext=mp4]/best" \
+            -o - \
+            "$SOURCE_URL" | \
           ffmpeg \
             -re \
-            -stream_loop -1 \
-            -i video.mp4 \
-            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" \
-            -map 0:v \
-            -map 0:a? \
+            -i pipe:0 \
             -c:v libx264 \
             -preset veryfast \
-            -profile:v high \
+            -b:v 4500k \
+            -maxrate 4500k \
+            -bufsize 9000k \
             -pix_fmt yuv420p \
-            -b:v 6800k \
-            -maxrate 6800k \
-            -bufsize 13600k \
-            -r 30 \
             -g 60 \
-            -keyint_min 60 \
-            -sc_threshold 0 \
             -c:a aac \
             -b:a 128k \
             -ar 44100 \
-            -ac 2 \
             -f flv \
-            "rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY"
+            "rtmps://a.rtmp.youtube.com/live2/$STREAM_KEY"
