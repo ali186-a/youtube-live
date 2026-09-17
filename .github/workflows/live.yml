@@ -1,4 +1,5 @@
-name: YouTube Link to YouTube Live
+```yaml
+name: Google Drive to YouTube Live
 
 on:
   workflow_dispatch:
@@ -6,67 +7,56 @@ on:
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    timeout-minutes: 360
 
     steps:
 
-      - name: Install FFmpeg, Deno and yt-dlp
+      # 1. Install FFmpeg and Wget
+      - name: Install FFmpeg and Wget
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg curl
+          sudo apt-get install -y ffmpeg wget
 
-          curl -fsSL https://deno.land/install.sh | sh
-          echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
-
-          python3 -m pip install -U yt-dlp
-
-      - name: Create cookies.txt
+      # 2. Download Video from Google Drive
+      - name: Download Google Drive Video
         run: |
-          cat > cookies.txt <<'EOF'
-          # Netscape HTTP Cookie File
-          # https://curl.haxx.se/rfc/cookie_spec.html
+          wget --no-check-certificate \
+            "https://drive.usercontent.google.com/download?id=1ZPrDCgbNEVwSh1gbjtP7bKjuyU2kksg9&export=download&confirm=t" \
+            -O video.mp4
 
-          COOKIES_HERE
-          EOF
-
-      - name: Check YouTube Source
+      # 3. Check Video
+      - name: Check Video
         run: |
-          echo "Testing YouTube source..."
+          ls -lh video.mp4
+          ls -lh 11.png
 
-          yt-dlp \
-            --cookies cookies.txt \
-            --js-runtimes deno \
-            --no-playlist \
-            --get-title \
-            "https://www.youtube.com/watch?v=gYSm9gakuxc"
+          ffprobe -v error \
+            -show_entries format=duration \
+            -of default=noprint_wrappers=1 \
+            video.mp4
 
-      - name: Get Direct Stream URL
-        run: |
-          yt-dlp \
-            --cookies cookies.txt \
-            --js-runtimes deno \
-            --no-playlist \
-            -f "best" \
-            -g \
-            "https://www.youtube.com/watch?v=gYSm9gakuxc" \
-            > source_url.txt
-
-          echo "Source URL obtained."
-
-      - name: Start YouTube Live
+      # 4. Stream Vertical Video to YouTube
+      - name: Stream to YouTube
         env:
           STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
         run: |
-          SOURCE_URL=$(cat source_url.txt)
+          test -n "$STREAM_KEY" || {
+            echo "ERROR: YOUTUBE_STREAM_KEY is missing"
+            exit 1
+          }
 
           ffmpeg \
             -re \
-            -i "$SOURCE_URL" \
+            -stream_loop -1 \
+            -i video.mp4 \
+            -loop 1 \
+            -i 11.png \
+            -filter_complex "[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[video];[video][1:v]overlay=0:0" \
             -c:v libx264 \
             -preset veryfast \
-            -b:v 4500k \
-            -maxrate 4500k \
-            -bufsize 9000k \
+            -b:v 6000k \
+            -maxrate 6000k \
+            -bufsize 12000k \
             -pix_fmt yuv420p \
             -g 60 \
             -keyint_min 60 \
@@ -75,4 +65,5 @@ jobs:
             -b:a 128k \
             -ar 44100 \
             -f flv \
-            "rtmps://a.rtmp.youtube.com/live2/$STREAM_KEY"
+            "rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY"
+```
