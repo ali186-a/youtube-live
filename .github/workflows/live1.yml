@@ -20,14 +20,13 @@ jobs:
       - name: Download Google Drive Video
         run: |
           wget --no-check-certificate \
-            "https://drive.usercontent.google.com/download?id=1DB2HMm1tCmLHabUU_9eTD-1JhjAba-b6&export=download&confirm=t" \
+            "https://drive.usercontent.google.com/download?id=1ZPrDCgbNEVwSh1gbjtP7bKjuyU2kksg9&export=download&confirm=t" \
             -O video.mp4
 
       # 3. Check Video
       - name: Check Video
         run: |
           ls -lh video.mp4
-          ls -lh 11.png
 
           ffprobe -v error \
             -show_entries format=duration \
@@ -48,9 +47,7 @@ jobs:
             -re \
             -stream_loop -1 \
             -i video.mp4 \
-            -loop 1 \
-            -i 11.png \
-            -filter_complex "[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[video];[video][1:v]overlay=0:0" \
+            -vf 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2' \
             -c:v libx264 \
             -preset veryfast \
             -b:v 6000k \
@@ -65,4 +62,3 @@ jobs:
             -ar 44100 \
             -f flv \
             "rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY"
-```
