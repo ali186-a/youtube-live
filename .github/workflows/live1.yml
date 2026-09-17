@@ -10,20 +10,23 @@ jobs:
 
     steps:
 
-      # 1. Install FFmpeg and Wget
+      # 1. Checkout Repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Install FFmpeg and Wget
       - name: Install FFmpeg and Wget
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg wget
-
-      # 2. Download Video from Google Drive
+      # 3. Download Video from Google Drive
       - name: Download Google Drive Video
         run: |
           wget --no-check-certificate \
-            "https://drive.usercontent.google.com/download?id=1DB2HMm1tCmLHabUU_9eTD-1JhjAba-b6&export=download&confirm=t" \
+            "https://drive.usercontent.google.com/download?id=1ZPrDCgbNEVwSh1gbjtP7bKjuyU2kksg9&export=download&confirm=t" \
             -O video.mp4
 
-      # 3. Check Video
+      # 4. Check Video
       - name: Check Video
         run: |
           ls -lh video.mp4
@@ -34,7 +37,7 @@ jobs:
             -of default=noprint_wrappers=1 \
             video.mp4
 
-      # 4. Stream Vertical Video to YouTube
+      # 5. Stream Vertical Video to YouTube
       - name: Stream to YouTube
         env:
           STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
