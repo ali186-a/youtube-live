@@ -1,4 +1,4 @@
-name: Google Drive to YouTube Live
+name: Google Drive Video Live - NEW
 
 on:
   workflow_dispatch:
@@ -10,35 +10,35 @@ jobs:
 
     steps:
 
-      # 1. Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. Install FFmpeg and Wget
       - name: Install FFmpeg and Wget
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg wget
 
-      # 3. Download Video from Google Drive
-      - name: Download Google Drive Video
+      - name: Remove Old Video
+        run: |
+          rm -f video.mp4
+
+      - name: Download Fresh Video
         run: |
           wget --no-check-certificate \
+            --no-cache \
             "https://drive.usercontent.google.com/download?id=1DkxSXVh4MD2uyLYeHuaTBP3PHcf2x50I&export=download&confirm=t" \
             -O video.mp4
 
-      # 4. Check Video
       - name: Check Video
         run: |
           ls -lh video.mp4
-
+          file video.mp4
           ffprobe -v error \
-            -show_entries format=duration \
+            -show_entries format=duration,size \
             -of default=noprint_wrappers=1 \
             video.mp4
 
-      # 5. Stream Vertical Video to YouTube
-      - name: Stream to YouTube
+      - name: Start YouTube Live
         env:
           STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
         run: |
