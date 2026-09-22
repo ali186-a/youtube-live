@@ -23,7 +23,7 @@ jobs:
       - name: Download Google Drive Video
         run: |
           wget --no-check-certificate \
-            "https://drive.usercontent.google.com/download?id=1ezAD1D6LTxYAWrmDN6ZfJYYI9mY_gv0y&export=download&confirm=t" \
+            "https://drive.usercontent.google.com/download?id=1DkxSXVh4MD2uyLYeHuaTBP3PHcf2x50I&export=download&confirm=t" \
             -O video.mp4
 
       # 4. Check Video
