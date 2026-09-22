@@ -19,6 +19,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg wget
+
       # 3. Download Video from Google Drive
       - name: Download Google Drive Video
         run: |
@@ -50,9 +51,7 @@ jobs:
             -re \
             -stream_loop -1 \
             -i video.mp4 \
-            -loop 1 \
-            -i 11.png \
-            -filter_complex "[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[video];[video][1:v]overlay=0:0" \
+            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" \
             -c:v libx264 \
             -preset veryfast \
             -b:v 6000k \
