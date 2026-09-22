@@ -23,14 +23,13 @@ jobs:
       - name: Download Google Drive Video
         run: |
           wget --no-check-certificate \
-            "https://drive.usercontent.google.com/download?id=1onpat4Q4Rvv404_aJe6wDIDr2n1x8UjJ&export=download&confirm=t" \
+            "https://drive.usercontent.google.com/download?id=1ezAD1D6LTxYAWrmDN6ZfJYYI9mY_gv0y&export=download&confirm=t" \
             -O video.mp4
 
       # 4. Check Video
       - name: Check Video
         run: |
           ls -lh video.mp4
-          ls -lh 11.png
 
           ffprobe -v error \
             -show_entries format=duration \
