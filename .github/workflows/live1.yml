@@ -1,4 +1,4 @@
-name: Stream Videos to YouTube
+name: Test One Video YouTube Live
 
 on:
   workflow_dispatch:
@@ -10,58 +10,34 @@ jobs:
 
     steps:
 
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Install FFmpeg and gdown
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg python3-pip
           pip3 install -U gdown
 
-      - name: Download videos
+      - name: Download test video
         run: |
           mkdir -p videos
 
-          gdown --folder \
-            "https://drive.google.com/drive/folders/1htbSr_XtI4XTTV_Cpq8Wypitv000SuTP?usp=sharing" \
-            -O videos
+          gdown \
+            "https://drive.google.com/uc?id=1Hz3M9eNa0GfuSON06DZwbny6_oEuKuQg" \
+            -O "videos/test.mp4"
 
-          echo "Downloaded files:"
-          ls -lh videos
+          ls -lh videos/test.mp4
 
-      - name: Check videos
+      - name: Check video
         run: |
-          for i in $(seq 1 16); do
-            if [ ! -f "videos/Video $i.mp4" ]; then
-              echo "ERROR: Video $i.mp4 is missing!"
-              exit 1
-            fi
-          done
+          ffprobe -hide_banner videos/test.mp4
 
-          echo "All 16 videos found successfully."
-
-      - name: Create playlist
-        run: |
-          rm -f playlist.txt
-
-          for i in $(seq 1 16); do
-            echo "file 'videos/Video $i.mp4'" >> playlist.txt
-          done
-
-          cat playlist.txt
-
-      - name: Stream to YouTube
+      - name: Stream video in loop
         env:
           STREAM_KEY: ${{ secrets.STREAM_KEY }}
         run: |
           ffmpeg \
             -re \
             -stream_loop -1 \
-            -f concat \
-            -safe 0 \
-            -i playlist.txt \
-            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p" \
+            -i "videos/test.mp4" \
             -c:v libx264 \
             -preset veryfast \
             -b:v 6000k \
