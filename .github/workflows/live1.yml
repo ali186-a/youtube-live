@@ -1,4 +1,4 @@
-name: Test One Video YouTube Live
+name: Test 2 Videos YouTube Live
 
 on:
   workflow_dispatch:
@@ -16,28 +16,45 @@ jobs:
           sudo apt-get install -y ffmpeg python3-pip
           pip3 install -U gdown
 
-      - name: Download test video
+      - name: Download 2 test videos
         run: |
           mkdir -p videos
 
           gdown \
             "https://drive.google.com/uc?id=1Hz3M9eNa0GfuSON06DZwbny6_oEuKuQg" \
-            -O "videos/test.mp4"
+            -O "videos/Video1.mp4"
 
-          ls -lh videos/test.mp4
+          gdown \
+            "https://drive.google.com/uc?id=1xlFs1VM-DVK3sXctVtuVDVf3ZGgGC9Sh" \
+            -O "videos/Video2.mp4"
 
-      - name: Check video
+          echo "Downloaded videos:"
+          ls -lh videos
+
+      - name: Check videos
         run: |
-          ffprobe -hide_banner videos/test.mp4
+          ffprobe -hide_banner videos/Video1.mp4
+          ffprobe -hide_banner videos/Video2.mp4
 
-      - name: Stream video in loop
+      - name: Create playlist
+        run: |
+          cat > playlist.txt << 'EOF'
+          file 'videos/Video1.mp4'
+          file 'videos/Video2.mp4'
+          EOF
+
+          cat playlist.txt
+
+      - name: Stream 2 videos continuously
         env:
           STREAM_KEY: ${{ secrets.STREAM_KEY }}
         run: |
           ffmpeg \
             -re \
             -stream_loop -1 \
-            -i "videos/test.mp4" \
+            -f concat \
+            -safe 0 \
+            -i playlist.txt \
             -c:v libx264 \
             -preset veryfast \
             -b:v 6000k \
