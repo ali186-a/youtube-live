@@ -10,18 +10,15 @@ jobs:
 
     steps:
 
-      # 1. Checkout repository
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Install FFmpeg and gdown
       - name: Install FFmpeg and gdown
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg python3-pip
           pip3 install -U gdown
 
-      # 3. Download all 16 videos from Google Drive
       - name: Download videos
         run: |
           mkdir -p videos
@@ -33,28 +30,17 @@ jobs:
           echo "Downloaded files:"
           ls -lh videos
 
-      # 4. Check all 16 videos
       - name: Check videos
         run: |
-          missing=0
-
           for i in $(seq 1 16); do
             if [ ! -f "videos/Video $i.mp4" ]; then
               echo "ERROR: Video $i.mp4 is missing!"
-              missing=1
+              exit 1
             fi
           done
 
-          if [ "$missing" -eq 1 ]; then
-            echo "One or more videos are missing."
-            echo "Files actually downloaded:"
-            ls -la videos
-            exit 1
-          fi
-
           echo "All 16 videos found successfully."
 
-      # 5. Create playlist
       - name: Create playlist
         run: |
           rm -f playlist.txt
@@ -63,57 +49,24 @@ jobs:
             echo "file 'videos/Video $i.mp4'" >> playlist.txt
           done
 
-          echo "Playlist:"
           cat playlist.txt
 
-      # 6. Combine all 16 videos
-      - name: Create combined video
-        run: |
-          ffmpeg -y \
-            -f concat \
-            -safe 0 \
-            -i playlist.txt \
-            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p" \
-            -r 30 \
-            -c:v libx264 \
-            -preset veryfast \
-            -b:v 4500k \
-            -maxrate 4500k \
-            -bufsize 9000k \
-            -g 60 \
-            -keyint_min 60 \
-            -sc_threshold 0 \
-            -c:a aac \
-            -b:a 128k \
-            -ar 44100 \
-            -ac 2 \
-            -movflags +faststart \
-            combined.mp4
-
-      # 7. Check combined video
-      - name: Check combined video
-        run: |
-          echo "===== VIDEO INFORMATION ====="
-          ffprobe -hide_banner combined.mp4
-
-          echo "===== DISK SPACE ====="
-          df -h .
-
-      # 8. Stream continuously to YouTube
       - name: Stream to YouTube
         env:
           STREAM_KEY: ${{ secrets.STREAM_KEY }}
         run: |
-          timeout 21000 ffmpeg \
+          ffmpeg \
             -re \
             -stream_loop -1 \
-            -fflags +genpts \
-            -i combined.mp4 \
+            -f concat \
+            -safe 0 \
+            -i playlist.txt \
+            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p" \
             -c:v libx264 \
             -preset veryfast \
-            -b:v 4500k \
-            -maxrate 4500k \
-            -bufsize 9000k \
+            -b:v 6000k \
+            -maxrate 6000k \
+            -bufsize 12000k \
             -r 30 \
             -g 60 \
             -keyint_min 60 \
