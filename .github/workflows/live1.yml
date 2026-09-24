@@ -1,4 +1,4 @@
-name: Test 2 Videos YouTube Live
+name: Stream 16 Videos to YouTube
 
 on:
   workflow_dispatch:
@@ -10,42 +10,108 @@ jobs:
 
     steps:
 
+      # 1. Install FFmpeg and gdown
       - name: Install FFmpeg and gdown
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg python3-pip
           pip3 install -U gdown
 
-      - name: Download 2 test videos
+      # 2. Download all 16 videos
+      - name: Download 16 videos
         run: |
           mkdir -p videos
 
-          gdown \
-            "https://drive.google.com/uc?id=1Hz3M9eNa0GfuSON06DZwbny6_oEuKuQg" \
-            -O "videos/Video1.mp4"
+          gdown "https://drive.google.com/uc?id=1_8Q0jRdsFeOGpHmxk5jHwT8POAlMzYo0" \
+            -O "videos/Video 1.mp4"
 
-          gdown \
-            "https://drive.google.com/uc?id=1xlFs1VM-DVK3sXctVtuVDVf3ZGgGC9Sh" \
-            -O "videos/Video2.mp4"
+          gdown "https://drive.google.com/uc?id=1BKl3mDQ0JiS2o0fx4o3eQl5N1xs5uxUS" \
+            -O "videos/Video 2.mp4"
 
-          echo "Downloaded videos:"
+          gdown "https://drive.google.com/uc?id=1uXcUtW9ZFlcXNBmF-49RRJHwGMP3Mtzw" \
+            -O "videos/Video 3.mp4"
+
+          gdown "https://drive.google.com/uc?id=1br9hU7U0j1-NaODuz8v1t4lFT0nSBIvs" \
+            -O "videos/Video 4.mp4"
+
+          gdown "https://drive.google.com/uc?id=1RddZ96h4La5ByyyjhWhdMmMA41BgNSFP" \
+            -O "videos/Video 5.mp4"
+
+          gdown "https://drive.google.com/uc?id=1bYdWn5Ird5koMxg8Y_aOae8uVmQChfAN" \
+            -O "videos/Video 6.mp4"
+
+          gdown "https://drive.google.com/uc?id=1RjP5bGCJIdcz8jJqcQ1DdPDDbMsEdQ15" \
+            -O "videos/Video 7.mp4"
+
+          gdown "https://drive.google.com/uc?id=1MM2zP4XszBV483r1nFKzePgNbyTPxv3m" \
+            -O "videos/Video 8.mp4"
+
+          gdown "https://drive.google.com/uc?id=1dOmbR_FarO0JfRndYAikzBJR9sMlayN4" \
+            -O "videos/Video 9.mp4"
+
+          gdown "https://drive.google.com/uc?id=1pV5TJgm5t2lBF4S9CD2IKCSLwDgk8UF0" \
+            -O "videos/Video 10.mp4"
+
+          gdown "https://drive.google.com/uc?id=1Uo-M4ng5T3XkKGaKZBwsHbDaBYBrZ5DV" \
+            -O "videos/Video 11.mp4"
+
+          gdown "https://drive.google.com/uc?id=1HZ3AAWN3xKcvweIbp6bFmluFZRqC7Ap3" \
+            -O "videos/Video 12.mp4"
+
+          gdown "https://drive.google.com/uc?id=1O_IZY6asdRG6CeKJ-D7y1-yxlqLiqwxP" \
+            -O "videos/Video 13.mp4"
+
+          gdown "https://drive.google.com/uc?id=1ZmyUHWmuVdUyuBDr-kvZtOUZenKAmH1w" \
+            -O "videos/Video 14.mp4"
+
+          gdown "https://drive.google.com/uc?id=1xlFs1VM-DVK3sXctVtuVDVf3ZGgGC9Sh" \
+            -O "videos/Video 15.mp4"
+
+          gdown "https://drive.google.com/uc?id=1Hz3M9eNa0GfuSON06DZwbny6_oEuKuQg" \
+            -O "videos/Video 16.mp4"
+
+          echo "===== Downloaded Videos ====="
           ls -lh videos
 
-      - name: Check videos
+      # 3. Check all videos
+      - name: Check all videos
         run: |
-          ffprobe -hide_banner videos/Video1.mp4
-          ffprobe -hide_banner videos/Video2.mp4
+          for i in $(seq 1 16); do
+            if [ ! -f "videos/Video $i.mp4" ]; then
+              echo "ERROR: Video $i.mp4 is missing!"
+              exit 1
+            fi
+          done
 
+          echo "All 16 videos downloaded successfully."
+
+      # 4. Create playlist in correct order
       - name: Create playlist
         run: |
           cat > playlist.txt << 'EOF'
-          file 'videos/Video1.mp4'
-          file 'videos/Video2.mp4'
+          file 'videos/Video 1.mp4'
+          file 'videos/Video 2.mp4'
+          file 'videos/Video 3.mp4'
+          file 'videos/Video 4.mp4'
+          file 'videos/Video 5.mp4'
+          file 'videos/Video 6.mp4'
+          file 'videos/Video 7.mp4'
+          file 'videos/Video 8.mp4'
+          file 'videos/Video 9.mp4'
+          file 'videos/Video 10.mp4'
+          file 'videos/Video 11.mp4'
+          file 'videos/Video 12.mp4'
+          file 'videos/Video 13.mp4'
+          file 'videos/Video 14.mp4'
+          file 'videos/Video 15.mp4'
+          file 'videos/Video 16.mp4'
           EOF
 
+          echo "===== Playlist ====="
           cat playlist.txt
 
-      - name: Stream 2 videos continuously
+      # 5. Stream all videos continuously
+      - name: Stream to YouTube
         env:
           STREAM_KEY: ${{ secrets.STREAM_KEY }}
         run: |
@@ -55,6 +121,7 @@ jobs:
             -f concat \
             -safe 0 \
             -i playlist.txt \
+            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p" \
             -c:v libx264 \
             -preset veryfast \
             -b:v 6000k \
