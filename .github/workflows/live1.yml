@@ -1,4 +1,4 @@
-name: Google Drive Video Live - NEW
+name: Stream Videos to YouTube
 
 on:
   workflow_dispatch:
@@ -6,63 +6,122 @@ on:
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 355
 
     steps:
 
-      - name: Checkout Repository
+      # 1. Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install FFmpeg and Wget
+      # 2. Install FFmpeg and gdown
+      - name: Install FFmpeg and gdown
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg wget
+          sudo apt-get install -y ffmpeg python3-pip
+          pip3 install -U gdown
 
-      - name: Remove Old Video
+      # 3. Download all 16 videos from Google Drive
+      - name: Download videos
         run: |
-          rm -f video.mp4
+          mkdir -p videos
 
-      - name: Download Fresh Video
-        run: |
-          wget --no-check-certificate \
-            --no-cache \
-            "https://drive.usercontent.google.com/download?id=1DkxSXVh4MD2uyLYeHuaTBP3PHcf2x50I&export=download&confirm=t" \
-            -O video.mp4
+          gdown --folder \
+            "https://drive.google.com/drive/folders/1htbSr_XtI4XTTV_Cpq8Wypitv000SuTP?usp=sharing" \
+            -O videos
 
-      - name: Check Video
-        run: |
-          ls -lh video.mp4
-          file video.mp4
-          ffprobe -v error \
-            -show_entries format=duration,size \
-            -of default=noprint_wrappers=1 \
-            video.mp4
+          echo "Downloaded files:"
+          ls -lh videos
 
-      - name: Start YouTube Live
-        env:
-          STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
+      # 4. Check all 16 videos
+      - name: Check videos
         run: |
-          test -n "$STREAM_KEY" || {
-            echo "ERROR: YOUTUBE_STREAM_KEY is missing"
+          missing=0
+
+          for i in $(seq 1 16); do
+            if [ ! -f "videos/Video $i.mp4" ]; then
+              echo "ERROR: Video $i.mp4 is missing!"
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -eq 1 ]; then
+            echo "One or more videos are missing."
+            echo "Files actually downloaded:"
+            ls -la videos
             exit 1
-          }
+          fi
 
-          ffmpeg \
-            -re \
-            -stream_loop -1 \
-            -i video.mp4 \
-            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" \
+          echo "All 16 videos found successfully."
+
+      # 5. Create playlist
+      - name: Create playlist
+        run: |
+          rm -f playlist.txt
+
+          for i in $(seq 1 16); do
+            echo "file 'videos/Video $i.mp4'" >> playlist.txt
+          done
+
+          echo "Playlist:"
+          cat playlist.txt
+
+      # 6. Combine all 16 videos
+      - name: Create combined video
+        run: |
+          ffmpeg -y \
+            -f concat \
+            -safe 0 \
+            -i playlist.txt \
+            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p" \
+            -r 30 \
             -c:v libx264 \
             -preset veryfast \
-            -b:v 6000k \
-            -maxrate 6000k \
-            -bufsize 12000k \
-            -pix_fmt yuv420p \
+            -b:v 4500k \
+            -maxrate 4500k \
+            -bufsize 9000k \
             -g 60 \
             -keyint_min 60 \
             -sc_threshold 0 \
             -c:a aac \
             -b:a 128k \
             -ar 44100 \
+            -ac 2 \
+            -movflags +faststart \
+            combined.mp4
+
+      # 7. Check combined video
+      - name: Check combined video
+        run: |
+          echo "===== VIDEO INFORMATION ====="
+          ffprobe -hide_banner combined.mp4
+
+          echo "===== DISK SPACE ====="
+          df -h .
+
+      # 8. Stream continuously to YouTube
+      - name: Stream to YouTube
+        env:
+          STREAM_KEY: ${{ secrets.STREAM_KEY }}
+        run: |
+          timeout 21000 ffmpeg \
+            -re \
+            -stream_loop -1 \
+            -fflags +genpts \
+            -i combined.mp4 \
+            -c:v libx264 \
+            -preset veryfast \
+            -b:v 4500k \
+            -maxrate 4500k \
+            -bufsize 9000k \
+            -r 30 \
+            -g 60 \
+            -keyint_min 60 \
+            -sc_threshold 0 \
+            -pix_fmt yuv420p \
+            -c:a aac \
+            -b:a 128k \
+            -ar 44100 \
+            -ac 2 \
             -f flv \
-            "rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY"
+            "rtmp://a.rtmp.youtube.com/live2/${STREAM_KEY}"
