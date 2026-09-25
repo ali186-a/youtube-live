@@ -1,4 +1,3 @@
-```yaml
 name: YouTube Live - Single Video Loop
 
 on:
@@ -79,4 +78,3 @@ jobs:
             -flvflags no_duration_filesize \
             -f flv \
             "rtmp://a.rtmp.youtube.com/live2/${STREAM_KEY}"
-```
