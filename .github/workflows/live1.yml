@@ -19,7 +19,7 @@ jobs:
         run: |
           mkdir -p original normalized
 
-          gdown "https://drive.google.com/uc?id=1jNZ9zMRvzdbQ5H3xhi0fTzockMP6T3TL" \
+          gdown "https://drive.google.com/uc?id=1wi8RJYZc_UE3r7Z8ril25taIpoXcNeoT" \
             -O "original/video.mp4"
 
       - name: Convert video
