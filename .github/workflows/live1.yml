@@ -1,4 +1,5 @@
-name: YouTube Live - 15 Videos
+```yaml
+name: YouTube Live - Single Video Loop
 
 on:
   workflow_dispatch:
@@ -15,74 +16,42 @@ jobs:
           sudo apt-get install -y ffmpeg
           python3 -m pip install --upgrade gdown
 
-      - name: Download videos
+      - name: Download video
         run: |
           mkdir -p original normalized
 
-          gdown "https://drive.google.com/uc?id=1_8Q0jRdsFeOGpHmxk5jHwT8POAlMzYo0" -O "original/Video 1.mp4"
-          gdown "https://drive.google.com/uc?id=1BKl3mDQ0JiS2o0fx4o3eQl5N1xs5uxUS" -O "original/Video 2.mp4"
+          gdown "https://drive.google.com/uc?id=1jNZ9zMRvzdbQ5H3xhi0fTzockMP6T3TL" \
+            -O "original/video.mp4"
 
-          # Video 3 intentionally removed
-
-          gdown "https://drive.google.com/uc?id=1br9hU7U0j1-NaODuz8v1t4lFT0nSBIvs" -O "original/Video 4.mp4"
-          gdown "https://drive.google.com/uc?id=1RddZ96h4La5ByyyjhWhdMmMA41BgNSFP" -O "original/Video 5.mp4"
-          gdown "https://drive.google.com/uc?id=1bYdWn5Ird5koMxg8Y_aOae8uVmQChfAN" -O "original/Video 6.mp4"
-          gdown "https://drive.google.com/uc?id=1RjP5bGCJIdcz8jJqcQ1DdPDDbMsEdQ15" -O "original/Video 7.mp4"
-          gdown "https://drive.google.com/uc?id=1MM2zP4XszBV483r1nFKzePgNbyTPxv3m" -O "original/Video 8.mp4"
-          gdown "https://drive.google.com/uc?id=1dOmbR_FarO0JfRndYAikzBJR9sMlayN4" -O "original/Video 9.mp4"
-          gdown "https://drive.google.com/uc?id=1pV5TJgm5t2lBF4S9CD2IKCSLwDgk8UF0" -O "original/Video 10.mp4"
-          gdown "https://drive.google.com/uc?id=1Uo-M4ng5T3XkKGaKZBwsHbDaBYBrZ5DV" -O "original/Video 11.mp4"
-          gdown "https://drive.google.com/uc?id=1HZ3AAWN3xKcvweIbp6bFmluFZRqC7Ap3" -O "original/Video 12.mp4"
-          gdown "https://drive.google.com/uc?id=1O_IZY6asdRG6CeKJ-D7y1-yxlqLiqwxP" -O "original/Video 13.mp4"
-          gdown "https://drive.google.com/uc?id=1ZmyUHWmuVdUyuBDr-kvZtOUZenKAmH1w" -O "original/Video 14.mp4"
-          gdown "https://drive.google.com/uc?id=1xlFs1VM-DVK3sXctVtuVDVf3ZGgGC9Sh" -O "original/Video 15.mp4"
-          gdown "https://drive.google.com/uc?id=1Hz3M9eNa0GfuSON06DZwbny6_oEuKuQg" -O "original/Video 16.mp4"
-
-      - name: Convert videos
+      - name: Convert video
         run: |
-          for i in 1 2 4 5 6 7 8 9 10 11 12 13 14 15 16; do
-            echo "Converting Video $i..."
+          ffmpeg -y \
+            -i "original/video.mp4" \
+            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p" \
+            -c:v libx264 \
+            -preset veryfast \
+            -profile:v high \
+            -level 4.2 \
+            -b:v 5000k \
+            -maxrate 5000k \
+            -bufsize 10000k \
+            -r 30 \
+            -g 60 \
+            -keyint_min 60 \
+            -sc_threshold 0 \
+            -pix_fmt yuv420p \
+            -c:a aac \
+            -b:a 128k \
+            -ar 44100 \
+            -ac 2 \
+            -af "aresample=async=1:first_pts=0" \
+            -movflags +faststart \
+            "normalized/video.mp4"
 
-            ffmpeg -y \
-              -i "original/Video $i.mp4" \
-              -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p" \
-              -c:v libx264 \
-              -preset veryfast \
-              -profile:v high \
-              -level 4.2 \
-              -b:v 5000k \
-              -maxrate 5000k \
-              -bufsize 10000k \
-              -r 30 \
-              -g 60 \
-              -keyint_min 60 \
-              -sc_threshold 0 \
-              -pix_fmt yuv420p \
-              -c:a aac \
-              -b:a 128k \
-              -ar 44100 \
-              -ac 2 \
-              -af "aresample=async=1:first_pts=0" \
-              -movflags +faststart \
-              "normalized/Video $i.mp4"
-          done
-
-      - name: Check videos
+      - name: Check video
         run: |
-          for i in 1 2 4 5 6 7 8 9 10 11 12 13 14 15 16; do
-            test -s "normalized/Video $i.mp4" || exit 1
-            echo "OK: Video $i"
-          done
-
-      - name: Create playlist
-        run: |
-          rm -f playlist.txt
-
-          for i in 1 2 4 5 6 7 8 9 10 11 12 13 14 15 16; do
-            printf "file 'normalized/Video %s.mp4'\n" "$i" >> playlist.txt
-          done
-
-          cat playlist.txt
+          test -s "normalized/video.mp4"
+          echo "Video OK"
 
       - name: Start YouTube Live
         env:
@@ -91,9 +60,7 @@ jobs:
           ffmpeg \
             -re \
             -stream_loop -1 \
-            -f concat \
-            -safe 0 \
-            -i playlist.txt \
+            -i "normalized/video.mp4" \
             -c:v libx264 \
             -preset veryfast \
             -b:v 5000k \
@@ -112,3 +79,4 @@ jobs:
             -flvflags no_duration_filesize \
             -f flv \
             "rtmp://a.rtmp.youtube.com/live2/${STREAM_KEY}"
+```
