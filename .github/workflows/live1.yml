@@ -6,7 +6,7 @@ on:
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 355
+    timeout-minutes: 30
 
     steps:
       - name: Install FFmpeg and gdown
