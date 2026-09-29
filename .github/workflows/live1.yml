@@ -18,7 +18,7 @@ jobs:
       - name: Download video
         run: |
           mkdir -p original normalized
-          gdown "https://drive.google.com/uc?id=1d8mSGHHOHLcYrrX94kaOhdXG0UmNq4Qc" \
+          gdown "https://drive.google.com/uc?id=1jNZ9zMRvzdbQ5H3xhi0fTzockMP6T3TL" \
             -O "original/video.mp4"
 
       - name: Convert video with 4 HD Effects
