@@ -1,8 +1,54 @@
-      - name: Convert video and clean audio
-        run: |
-          mkdir -p normalized audio cleaned
+name: YouTube Live - Clean Audio Loop
 
-          # Extract audio at 48 kHz WAV
+on:
+  workflow_dispatch:
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+
+      - name: Install FFmpeg and Python
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg python3-pip
+
+          python3 -m pip install --upgrade pip
+          python3 -m pip install gdown
+          python3 -m pip install deepfilternet
+
+
+      - name: Create folders
+        run: |
+          mkdir -p original
+          mkdir -p audio
+          mkdir -p cleaned
+          mkdir -p normalized
+
+
+      - name: Download video
+        run: |
+          gdown "https://drive.google.com/uc?id=1leeq1rEcWT9y42YPimDtPfvigKIBulSy" \
+            -O "original/video.mp4"
+
+
+      - name: Check original video
+        run: |
+          test -s "original/video.mp4"
+
+          echo "Original video:"
+          ls -lh "original/video.mp4"
+
+          ffprobe -v error \
+            -show_entries format=duration \
+            -of default=noprint_wrappers=1 \
+            "original/video.mp4"
+
+
+      - name: Extract audio
+        run: |
           ffmpeg -y \
             -i "original/video.mp4" \
             -vn \
@@ -11,17 +57,43 @@
             -c:a pcm_s16le \
             "audio/input.wav"
 
-          # Install DeepFilterNet
-          python3 -m pip install --upgrade deepfilternet
+          test -s "audio/input.wav"
 
-          # AI noise reduction
-          deepFilter "audio/input.wav" \
+          echo "Audio extracted successfully"
+
+
+      - name: Clean audio with DeepFilterNet
+        run: |
+          deepFilter \
+            "audio/input.wav" \
             --output-dir "cleaned"
 
-          # Combine original video + cleaned audio
+          echo "DeepFilterNet output:"
+          find cleaned -type f -maxdepth 2 -print
+
+
+      - name: Prepare cleaned audio
+        run: |
+          CLEANED_FILE=$(find cleaned -type f -name "*.wav" | head -n 1)
+
+          if [ -z "$CLEANED_FILE" ]; then
+            echo "ERROR: Cleaned WAV file was not found!"
+            exit 1
+          fi
+
+          echo "Using cleaned audio:"
+          echo "$CLEANED_FILE"
+
+          cp "$CLEANED_FILE" "cleaned/final.wav"
+
+          test -s "cleaned/final.wav"
+
+
+      - name: Convert video with cleaned audio
+        run: |
           ffmpeg -y \
             -i "original/video.mp4" \
-            -i "cleaned/input.wav" \
+            -i "cleaned/final.wav" \
             -map 0:v:0 \
             -map 1:a:0 \
             -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p" \
@@ -44,3 +116,52 @@
             -af "aresample=async=1:first_pts=0" \
             -movflags +faststart \
             "normalized/video.mp4"
+
+
+      - name: Check final video
+        run: |
+          test -s "normalized/video.mp4"
+
+          echo "Final video:"
+          ls -lh "normalized/video.mp4"
+
+          ffprobe -v error \
+            -show_entries stream=codec_name,width,height,r_frame_rate \
+            -of default=noprint_wrappers=1 \
+            "normalized/video.mp4"
+
+          echo "Video OK"
+
+
+      - name: Start YouTube Live
+        env:
+          STREAM_KEY: ${{ secrets.STREAM_KEY }}
+
+        run: |
+          if [ -z "$STREAM_KEY" ]; then
+            echo "ERROR: STREAM_KEY secret is missing!"
+            exit 1
+          fi
+
+          ffmpeg \
+            -re \
+            -stream_loop -1 \
+            -i "normalized/video.mp4" \
+            -c:v libx264 \
+            -preset veryfast \
+            -b:v 5000k \
+            -maxrate 5000k \
+            -bufsize 10000k \
+            -r 30 \
+            -g 60 \
+            -keyint_min 60 \
+            -sc_threshold 0 \
+            -pix_fmt yuv420p \
+            -c:a aac \
+            -b:a 128k \
+            -ar 44100 \
+            -ac 2 \
+            -af "aresample=async=1:first_pts=0" \
+            -flvflags no_duration_filesize \
+            -f flv \
+            "rtmp://a.rtmp.youtube.com/live2/${STREAM_KEY}"
