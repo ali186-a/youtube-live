@@ -1,7 +1,5 @@
 name: YouTube Live - Single Video Loop
-
-on:
-  workflow_dispatch:
+on: workflow_dispatch:
 
 jobs:
   stream:
