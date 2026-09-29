@@ -6,7 +6,7 @@ on:
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 130
 
     steps:
       - name: Install FFmpeg and gdown
@@ -22,11 +22,15 @@ jobs:
           gdown "https://drive.google.com/uc?id=1d8mSGHHOHLcYrrX94kaOhdXG0UmNq4Qc" \
             -O "original/video.mp4"
 
-      - name: Convert video
+      - name: Convert video with 4 HD Effects
         run: |
           ffmpeg -y \
             -i "original/video.mp4" \
-            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p" \
+            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,\
+pad=1080:1920:(ow-iw)/2:(oh-ih)/2,\
+eq=brightness=0.03:contrast=1.08:saturation=1.12:gamma=1.03,\
+unsharp=5:5:0.7:5:5:0.0,\
+format=yuv420p" \
             -c:v libx264 \
             -preset veryfast \
             -profile:v high \
@@ -51,6 +55,10 @@ jobs:
         run: |
           test -s "normalized/video.mp4"
           echo "Video OK"
+          ffprobe -v error \
+            -show_entries format=duration \
+            -of default=noprint_wrappers=1 \
+            "normalized/video.mp4"
 
       - name: Start YouTube Live
         env:
