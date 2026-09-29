@@ -1,4 +1,3 @@
-```yaml
 name: YouTube Live - Single Video Loop
 
 on:
@@ -13,4 +12,3 @@ jobs:
         run: |
           echo "Workflow is working!"
           echo "GitHub Actions is OK."
-```
