@@ -1,4 +1,4 @@
-name: YouTube Live - Clean Audio Loop
+name: YouTube Live - Single Video Loop
 
 on:
   workflow_dispatch:
@@ -9,115 +9,23 @@ jobs:
     timeout-minutes: 30
 
     steps:
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install FFmpeg
+      - name: Install FFmpeg and gdown
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-
-      - name: Install Python packages
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install gdown
-          python -m pip install torch torchaudio
-          python -m pip install deepfilternet
-
-          echo "=============================="
-          echo "Checking Python"
-          python --version
-          echo "=============================="
-
-          echo "Checking Torch"
-          python -c "import torch; print('Torch:', torch.__version__)"
-
-          echo "Checking DeepFilterNet"
-          python -c "import df; print('DeepFilterNet: OK')"
-
-      - name: Create folders
-        run: |
-          mkdir -p original
-          mkdir -p audio
-          mkdir -p cleaned
-          mkdir -p normalized
+          python3 -m pip install --upgrade gdown
 
       - name: Download video
         run: |
-          gdown \
-            "https://drive.google.com/uc?id=1leeq1rEcWT9y42YPimDtPfvigKIBulSy" \
+          mkdir -p original normalized
+
+          gdown "https://drive.google.com/uc?id=1d8mSGHHOHLcYrrX94kaOhdXG0UmNq4Qc" \
             -O "original/video.mp4"
 
-          test -s "original/video.mp4"
-
-          echo "Video downloaded successfully"
-          ls -lh "original/video.mp4"
-
-      - name: Check original video
-        run: |
-          ffprobe \
-            -v error \
-            -show_entries format=duration \
-            -show_entries stream=codec_name,width,height,sample_rate \
-            -of default=noprint_wrappers=1 \
-            "original/video.mp4"
-
-      - name: Extract audio
+      - name: Convert video
         run: |
           ffmpeg -y \
             -i "original/video.mp4" \
-            -vn \
-            -ar 48000 \
-            -ac 1 \
-            -c:a pcm_s16le \
-            "audio/input.wav"
-
-          test -s "audio/input.wav"
-
-          echo "Audio extracted successfully"
-          ls -lh "audio/input.wav"
-
-      - name: Clean audio with DeepFilterNet
-        run: |
-          echo "Starting DeepFilterNet..."
-
-          deepFilter \
-            "audio/input.wav" \
-            --output-dir "cleaned"
-
-          echo "DeepFilterNet finished"
-
-          echo "Generated files:"
-          find cleaned -type f -print
-
-      - name: Prepare cleaned audio
-        run: |
-          CLEANED_FILE=$(find cleaned -type f -name "*.wav" | head -n 1)
-
-          if [ -z "$CLEANED_FILE" ]; then
-            echo "ERROR: Cleaned WAV was not found!"
-            exit 1
-          fi
-
-          echo "Cleaned audio found:"
-          echo "$CLEANED_FILE"
-
-          cp "$CLEANED_FILE" "cleaned/final.wav"
-
-          test -s "cleaned/final.wav"
-
-          ls -lh "cleaned/final.wav"
-
-      - name: Convert video with cleaned audio
-        run: |
-          ffmpeg -y \
-            -i "original/video.mp4" \
-            -i "cleaned/final.wav" \
-            -map 0:v:0 \
-            -map 1:a:0 \
             -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p" \
             -c:v libx264 \
             -preset veryfast \
@@ -139,40 +47,15 @@ jobs:
             -movflags +faststart \
             "normalized/video.mp4"
 
-          test -s "normalized/video.mp4"
-
-          echo "Normalized video created"
-          ls -lh "normalized/video.mp4"
-
-      - name: Check final video
+      - name: Check video
         run: |
-          echo "================================="
-          echo "FINAL VIDEO INFORMATION"
-          echo "================================="
-
-          ffprobe \
-            -v error \
-            -show_entries \
-            stream=codec_name,width,height,r_frame_rate,sample_rate,channels \
-            -of default=noprint_wrappers=1 \
-            "normalized/video.mp4"
-
-          echo "================================="
+          test -s "normalized/video.mp4"
           echo "Video OK"
-          echo "================================="
 
       - name: Start YouTube Live
         env:
           STREAM_KEY: ${{ secrets.STREAM_KEY }}
-
         run: |
-          if [ -z "$STREAM_KEY" ]; then
-            echo "ERROR: STREAM_KEY secret is missing!"
-            exit 1
-          fi
-
-          echo "Starting YouTube Live..."
-
           ffmpeg \
             -re \
             -stream_loop -1 \
