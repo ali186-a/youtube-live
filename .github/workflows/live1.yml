@@ -4,11 +4,85 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  stream:
     runs-on: ubuntu-latest
+    timeout-minutes: 130
 
     steps:
-      - name: Test Workflow
+      - name: Install FFmpeg and gdown
         run: |
-          echo "Workflow is working!"
-          echo "GitHub Actions is OK."
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python3 -m pip install --upgrade gdown
+
+      - name: Download video
+        run: |
+          mkdir -p original normalized
+
+          gdown "https://drive.google.com/uc?id=1d8mSGHHOHLcYrrX94kaOhdXG0UmNq4Qc" \
+            -O "original/video.mp4"
+
+      - name: Convert video with 4 HD Effects
+        run: |
+          ffmpeg -y \
+            -i "original/video.mp4" \
+            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,\
+pad=1080:1920:(ow-iw)/2:(oh-ih)/2,\
+eq=brightness=0.03:contrast=1.08:saturation=1.12:gamma=1.03,\
+unsharp=5:5:0.7:5:5:0.0,\
+format=yuv420p" \
+            -c:v libx264 \
+            -preset veryfast \
+            -profile:v high \
+            -level 4.2 \
+            -b:v 5000k \
+            -maxrate 5000k \
+            -bufsize 10000k \
+            -r 30 \
+            -g 60 \
+            -keyint_min 60 \
+            -sc_threshold 0 \
+            -pix_fmt yuv420p \
+            -c:a aac \
+            -b:a 128k \
+            -ar 44100 \
+            -ac 2 \
+            -af "aresample=async=1:first_pts=0" \
+            -movflags +faststart \
+            "normalized/video.mp4"
+
+      - name: Check video
+        run: |
+          test -s "normalized/video.mp4"
+          echo "Video OK"
+          ffprobe -v error \
+            -show_entries format=duration \
+            -of default=noprint_wrappers=1 \
+            "normalized/video.mp4"
+
+      - name: Start YouTube Live
+        env:
+          STREAM_KEY: ${{ secrets.STREAM_KEY }}
+        run: |
+          ffmpeg \
+            -re \
+            -stream_loop -1 \
+            -i "normalized/video.mp4" \
+            -c:v libx264 \
+            -preset veryfast \
+            -b:v 5000k \
+            -maxrate 5000k \
+            -bufsize 10000k \
+            -r 30 \
+            -g 60 \
+            -keyint_min 60 \
+            -sc_threshold 0 \
+            -pix_fmt yuv420p \
+            -c:a aac \
+            -b:a 128k \
+            -ar 44100 \
+            -ac 2 \
+            -af "aresample=async=1:first_pts=0" \
+            -flvflags no_duration_filesize \
+            -f flv \
+            "rtmp://a.rtmp.youtube.com/live2/${STREAM_KEY}"
