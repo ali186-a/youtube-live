@@ -10,16 +10,46 @@ jobs:
 
     steps:
 
-      - name: Install FFmpeg and Python
+      # ==========================================
+      # 1. Install FFmpeg + Python + DeepFilterNet
+      # ==========================================
+      - name: Install FFmpeg and DeepFilterNet
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg python3-pip
 
-          python3 -m pip install --upgrade pip
-          python3 -m pip install gdown
-          python3 -m pip install deepfilternet
+          sudo apt-get install -y \
+            ffmpeg \
+            python3.11 \
+            python3.11-venv
+
+          python3.11 -m venv ~/deepfilter-env
+
+          source ~/deepfilter-env/bin/activate
+
+          python -m pip install --upgrade pip
+
+          python -m pip install gdown
+
+          python -m pip install torch torchaudio
+
+          python -m pip install deepfilternet
+
+          echo "================================="
+          echo "Checking Torch"
+          echo "================================="
+
+          python -c "import torch; print('Torch:', torch.__version__)"
+
+          echo "================================="
+          echo "Checking DeepFilterNet"
+          echo "================================="
+
+          python -c "import df; print('DeepFilterNet: OK')"
 
 
+      # ==========================================
+      # 2. Create folders
+      # ==========================================
       - name: Create folders
         run: |
           mkdir -p original
@@ -28,25 +58,40 @@ jobs:
           mkdir -p normalized
 
 
+      # ==========================================
+      # 3. Download video from Google Drive
+      # ==========================================
       - name: Download video
         run: |
-          gdown "https://drive.google.com/uc?id=1leeq1rEcWT9y42YPimDtPfvigKIBulSy" \
+          source ~/deepfilter-env/bin/activate
+
+          gdown \
+            "https://drive.google.com/uc?id=1leeq1rEcWT9y42YPimDtPfvigKIBulSy" \
             -O "original/video.mp4"
 
-
-      - name: Check original video
-        run: |
           test -s "original/video.mp4"
 
-          echo "Original video:"
+          echo "Video downloaded successfully"
+
           ls -lh "original/video.mp4"
 
-          ffprobe -v error \
+
+      # ==========================================
+      # 4. Check original video
+      # ==========================================
+      - name: Check original video
+        run: |
+          ffprobe \
+            -v error \
             -show_entries format=duration \
+            -show_entries stream=codec_name,width,height,sample_rate \
             -of default=noprint_wrappers=1 \
             "original/video.mp4"
 
 
+      # ==========================================
+      # 5. Extract audio as 48 kHz WAV
+      # ==========================================
       - name: Extract audio
         run: |
           ffmpeg -y \
@@ -61,34 +106,53 @@ jobs:
 
           echo "Audio extracted successfully"
 
+          ls -lh "audio/input.wav"
 
+
+      # ==========================================
+      # 6. AI Noise Reduction
+      # ==========================================
       - name: Clean audio with DeepFilterNet
         run: |
+          source ~/deepfilter-env/bin/activate
+
+          echo "Starting DeepFilterNet..."
+
           deepFilter \
             "audio/input.wav" \
             --output-dir "cleaned"
 
-          echo "DeepFilterNet output:"
-          find cleaned -type f -maxdepth 2 -print
+          echo "DeepFilterNet finished"
+
+          echo "Generated files:"
+          find cleaned -type f -print
 
 
+      # ==========================================
+      # 7. Find cleaned WAV
+      # ==========================================
       - name: Prepare cleaned audio
         run: |
           CLEANED_FILE=$(find cleaned -type f -name "*.wav" | head -n 1)
 
           if [ -z "$CLEANED_FILE" ]; then
-            echo "ERROR: Cleaned WAV file was not found!"
+            echo "ERROR: Cleaned WAV was not found!"
             exit 1
           fi
 
-          echo "Using cleaned audio:"
+          echo "Cleaned audio found:"
           echo "$CLEANED_FILE"
 
           cp "$CLEANED_FILE" "cleaned/final.wav"
 
           test -s "cleaned/final.wav"
 
+          ls -lh "cleaned/final.wav"
 
+
+      # ==========================================
+      # 8. Create normalized video
+      # ==========================================
       - name: Convert video with cleaned audio
         run: |
           ffmpeg -y \
@@ -117,31 +181,49 @@ jobs:
             -movflags +faststart \
             "normalized/video.mp4"
 
-
-      - name: Check final video
-        run: |
           test -s "normalized/video.mp4"
 
-          echo "Final video:"
+          echo "Normalized video created"
+
           ls -lh "normalized/video.mp4"
 
-          ffprobe -v error \
-            -show_entries stream=codec_name,width,height,r_frame_rate \
+
+      # ==========================================
+      # 9. Final video check
+      # ==========================================
+      - name: Check final video
+        run: |
+          echo "================================="
+          echo "FINAL VIDEO INFORMATION"
+          echo "================================="
+
+          ffprobe \
+            -v error \
+            -show_entries \
+            stream=codec_name,width,height,r_frame_rate,sample_rate,channels \
             -of default=noprint_wrappers=1 \
             "normalized/video.mp4"
 
+          echo "================================="
           echo "Video OK"
+          echo "================================="
 
 
+      # ==========================================
+      # 10. Start YouTube Live
+      # ==========================================
       - name: Start YouTube Live
         env:
           STREAM_KEY: ${{ secrets.STREAM_KEY }}
 
         run: |
+
           if [ -z "$STREAM_KEY" ]; then
             echo "ERROR: STREAM_KEY secret is missing!"
             exit 1
           fi
+
+          echo "Starting YouTube Live..."
 
           ffmpeg \
             -re \
