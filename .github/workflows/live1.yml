@@ -9,6 +9,7 @@ jobs:
     timeout-minutes: 130
 
     steps:
+
       - name: Install FFmpeg and gdown
         run: |
           sudo apt-get update
@@ -21,22 +22,17 @@ jobs:
           gdown "https://drive.google.com/uc?id=1jNZ9zMRvzdbQ5H3xhi0fTzockMP6T3TL" \
             -O "original/video.mp4"
 
-      - name: Convert video with 4 HD Effects
+      - name: Apply Grayscale Filter
         run: |
           ffmpeg -y \
             -i "original/video.mp4" \
-            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,eq=brightness=0.03:contrast=1.08:saturation=1.12:gamma=1.03,unsharp=5:5:0.7:5:5:0.0,format=yuv420p" \
+            -vf "hue=s=0" \
             -c:v libx264 \
             -preset veryfast \
-            -profile:v high \
-            -level 4.2 \
             -b:v 5000k \
             -maxrate 5000k \
             -bufsize 10000k \
             -r 30 \
-            -g 60 \
-            -keyint_min 60 \
-            -sc_threshold 0 \
             -pix_fmt yuv420p \
             -c:a aac \
             -b:a 128k \
@@ -49,7 +45,8 @@ jobs:
       - name: Check video
         run: |
           test -s "normalized/video.mp4"
-          echo "Video OK"
+          echo "Grayscale Video OK"
+
           ffprobe -v error \
             -show_entries format=duration \
             -of default=noprint_wrappers=1 \
@@ -58,6 +55,7 @@ jobs:
       - name: Start YouTube Live
         env:
           STREAM_KEY: ${{ secrets.STREAM_KEY }}
+
         run: |
           ffmpeg \
             -re \
