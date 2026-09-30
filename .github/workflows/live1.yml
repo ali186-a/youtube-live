@@ -1,4 +1,4 @@
-name: YouTube Live - Single Video Loop
+name: YouTube Live - Grayscale Video
 
 on:
   workflow_dispatch:
@@ -9,73 +9,37 @@ jobs:
     timeout-minutes: 130
 
     steps:
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Install FFmpeg and gdown
+      - name: Install gdown
+        run: pip install gdown
+
+      - name: Download Video
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
-          python3 -m pip install --upgrade gdown
+          mkdir -p video
+          gdown "https://drive.google.com/uc?id=1jNZ9zMRvzdbQ5H3xhi0fTzockMP6T3TL" -O video/input.mp4
 
-      - name: Download video
-        run: |
-          mkdir -p original normalized
-          gdown "https://drive.google.com/uc?id=1jNZ9zMRvzdbQ5H3xhi0fTzockMP6T3TL" \
-            -O "original/video.mp4"
-
-      - name: Apply Grayscale Filter
+      - name: Convert to Grayscale
         run: |
           ffmpeg -y \
-            -i "original/video.mp4" \
+            -i video/input.mp4 \
             -vf "hue=s=0" \
             -c:v libx264 \
             -preset veryfast \
-            -b:v 5000k \
-            -maxrate 5000k \
-            -bufsize 10000k \
-            -r 30 \
-            -pix_fmt yuv420p \
             -c:a aac \
-            -b:a 128k \
-            -ar 44100 \
-            -ac 2 \
-            -af "aresample=async=1:first_pts=0" \
-            -movflags +faststart \
-            "normalized/video.mp4"
-
-      - name: Check video
-        run: |
-          test -s "normalized/video.mp4"
-          echo "Grayscale Video OK"
-
-          ffprobe -v error \
-            -show_entries format=duration \
-            -of default=noprint_wrappers=1 \
-            "normalized/video.mp4"
+            video/gray.mp4
 
       - name: Start YouTube Live
         env:
           STREAM_KEY: ${{ secrets.STREAM_KEY }}
-
         run: |
           ffmpeg \
             -re \
             -stream_loop -1 \
-            -i "normalized/video.mp4" \
-            -c:v libx264 \
-            -preset veryfast \
-            -b:v 5000k \
-            -maxrate 5000k \
-            -bufsize 10000k \
-            -r 30 \
-            -g 60 \
-            -keyint_min 60 \
-            -sc_threshold 0 \
-            -pix_fmt yuv420p \
+            -i video/gray.mp4 \
+            -c:v copy \
             -c:a aac \
             -b:a 128k \
-            -ar 44100 \
-            -ac 2 \
-            -af "aresample=async=1:first_pts=0" \
-            -flvflags no_duration_filesize \
             -f flv \
             "rtmp://a.rtmp.youtube.com/live2/${STREAM_KEY}"
