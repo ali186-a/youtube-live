@@ -1,4 +1,4 @@
-name: YouTube Live - Grayscale Video
+name: YouTube Live - Video
 
 on:
   workflow_dispatch:
@@ -18,17 +18,7 @@ jobs:
       - name: Download Video
         run: |
           mkdir -p video
-          gdown "https://drive.google.com/uc?id=1jNZ9zMRvzdbQ5H3xhi0fTzockMP6T3TL" -O video/input.mp4
-
-      - name: Convert to Grayscale
-        run: |
-          ffmpeg -y \
-            -i video/input.mp4 \
-            -vf "hue=s=0" \
-            -c:v libx264 \
-            -preset veryfast \
-            -c:a aac \
-            video/gray.mp4
+          gdown "https://drive.google.com/uc?id=17p0pvTaQRZ-RVo_t6_1BS55Sl0C8RG87" -O video/input.mp4
 
       - name: Start YouTube Live
         env:
@@ -37,7 +27,7 @@ jobs:
           ffmpeg \
             -re \
             -stream_loop -1 \
-            -i video/gray.mp4 \
+            -i video/input.mp4 \
             -c:v copy \
             -c:a aac \
             -b:a 128k \
