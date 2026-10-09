@@ -1,35 +1,36 @@
-name: YouTube Live - Video
+name: YouTube Live Loop
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:        # manual start
+  schedule:
+    - cron: '0 */6 * * *'   # har 6 ghante baad dobara start (job limit 6h hai)
+
+concurrency:
+  group: youtube-live
+  cancel-in-progress: false
 
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 130
+    timeout-minutes: 358
 
     steps:
-      - name: Install FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: Install gdown
-        run: pip install gdown
-
-      - name: Download Video
+      - name: Install ffmpeg
         run: |
-          mkdir -p video
-          gdown "https://drive.google.com/uc?id=17p0pvTaQRZ-RVo_t6_1BS55Sl0C8RG87" -O video/input.mp4
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
-      - name: Start YouTube Live
+      - name: Stream video.mp4 in loop
         env:
-          STREAM_KEY: ${{ secrets.STREAM_KEY }}
+          YT_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
         run: |
-          ffmpeg \
-            -re \
-            -stream_loop -1 \
-            -i video/input.mp4 \
-            -c:v copy \
-            -c:a aac \
-            -b:a 128k \
-            -f flv \
-            "rtmp://a.rtmp.youtube.com/live2/${STREAM_KEY}"
+          # 21000 sec = 5h50m, phir step khud band ho jata hai
+          timeout 21000 ffmpeg -re -stream_loop -1 -i video.mp4 \
+            -c:v libx264 -preset veryfast -pix_fmt yuv420p \
+            -b:v 2500k -maxrate 2500k -bufsize 5000k \
+            -g 60 -keyint_min 60 \
+            -c:a aac -b:a 128k -ar 44100 \
+            -f flv "rtmp://a.rtmp.youtube.com/live2/${YT_KEY}" || true
